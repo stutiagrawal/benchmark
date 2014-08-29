@@ -47,7 +47,8 @@ def convert_to_fastq(inpdir, bam_file, uuid, picard_path, logger=default_logger)
         logger.error('Invalid path %s or %s' %(inpdir, picard_path))
 
 def GATK_snp_calling(reference, bamfile, outdir, program, GATK_path, logger=default_logger):
-    
+    """ Run GATk for SNP calling """
+
     if(os.path.isfile(reference) and os.path.isfile(bamfile) and
         os.path.isdir(outdir)):
 
@@ -71,10 +72,15 @@ def GATK_snp_calling(reference, bamfile, outdir, program, GATK_path, logger=defa
     else:
         logger.error('Invalid reference, bam or output directory')
 
-def getBAM(dirname):
-    for filename in os.listdir(dirname):
-        if filename.endswith(".bam") and not(filename.startswith("novo")):
-            return os.path.join(dirname, filename)
+def getBAM(dirname, logger=default_logger):
+    """ Function to get the path of a BAM file """
+
+    if(os.path.isdir(dirname)):
+        for filename in os.listdir(dirname):
+            if filename.endswith(".bam"):
+                return os.path.join(dirname, filename)
+    else:
+        logger.error("Invalid directory: %s" %(dirname))
 
 if __name__ == "__main__":
 
@@ -92,16 +98,12 @@ if __name__ == "__main__":
 
     logger = setupLog.setup_logging(logging.INFO, 'benchmark', args.log_file)
 
-    fp = open(args.filename, "r")
-    fp.readline()
-    for line in fp:
-        line = line.split("\t")
-        uuid = line[16]
-        dirname = os.path.join(args.data, uuid)
-        if(os.path.isdir(dirname)):
-            bamfile = getBAM(dirname)
-            GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
-                            args.GATK)
+    dirname = args.data
+
+    if(os.path.isdir(dirname)):
+        bamfile = getBAM(dirname)
+        GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
+                        args.GATK)
             #GATK_snp_calling(args.ref, bamfile, dirname, "HaplotypeCaller",
             #                args.GATK)
 
