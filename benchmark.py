@@ -5,10 +5,12 @@ import os
 import errno
 import setupLog
 import time
+import multiprocessing
 
 default_logger = logging.getLogger(name='benchmark')
 
 def is_valid_input(cghub_key, outdir, logger=default_logger):
+    
     if(not(os.path.isfile(cghub_key))):
         logger.error('Invalid key file path: %s' %(cghub_key))
         return False
@@ -53,7 +55,7 @@ def GATK_snp_calling(reference, bamfile, outdir, program, GATK_path, logger=defa
         os.path.isdir(outdir)):
 
         start_time = time.time()
-        cmd = ['java', '-jar', '%s'%(os.path.join(GATK_path,'GenomeAnalysisTK.jar'))]
+        cmd = ['java','-Xmx7G', '-jar', '%s'%(os.path.join(GATK_path,'GenomeAnalysisTK.jar')), '-nct', '%s'%(int(0.8 * multiprocessing.cpu_count()))]
         inp = ['-R', reference, '-T', program, '-I', bamfile]
         out = ['-o', '%s' %(os.path.join(outdir, 'out_snps_%s' %(program)))]
 
@@ -77,7 +79,7 @@ def getBAM(dirname, logger=default_logger):
 
     if(os.path.isdir(dirname)):
         for filename in os.listdir(dirname):
-            if filename.endswith(".bam"):
+            if (filename.endswith(".bam") and not(filename.startswith("novo"))):
                 return os.path.join(dirname, filename)
     else:
         logger.error("Invalid directory: %s" %(dirname))
@@ -98,12 +100,18 @@ if __name__ == "__main__":
 
     logger = setupLog.setup_logging(logging.INFO, 'benchmark', args.log_file)
 
-    dirname = args.data
-
-    if(os.path.isdir(dirname)):
-        bamfile = getBAM(dirname)
-        GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
-                        args.GATK)
+    #dirname = args.data
+    
+    fp = open(args.filename, "r")
+    fp.readline()
+    for line in fp:
+        line = line.split("\t")
+        uuid = line[16]
+        dirname = os.path.join(args.data, uuid)
+        if(os.path.isdir(dirname)):
+            bamfile = getBAM(dirname)
+            GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
+                            args.GATK)
             #GATK_snp_calling(args.ref, bamfile, dirname, "HaplotypeCaller",
             #                args.GATK)
 
