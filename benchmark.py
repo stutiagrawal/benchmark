@@ -34,17 +34,23 @@ def download_bam(uuid, outdir, cghub_key, logger=default_logger):
 def convert_to_fastq(inpdir, bam_file, uuid, picard_path, logger=default_logger):
     
     if(os.path.isdir(inpdir) and os.path.isdir(picard_path)):
-        cmd = ['java', '-jar', '%s' %(os.path.join(picard_path,
-                                        'SamToFastq.jar'))]
-        inp = ['INPUT=%s' %(bam_file), 'FASTA=%s' %(inpdir, '%s_1.fastq' %(uuid)),
-                'SECOND_END_FASTQ=%s' %(inpdir, '%s_2.fastq' %(uuid))]
+        cmd = ['java','-Xmx1G', '-XX:-UseGCOverheadLimit', '-jar', '%s' %(os.path.join(picard_path,'SamToFastq.jar')),
+                                        'VALIDATION_STRINGENCY=SILENT',
+                                        'MAX_RECORDS_IN_RAM=null']
+        inp = ['INPUT=%s' %(bam_file), 'FASTQ=%s' %(os.path.join(inpdir,'%s_1.fastq.gz' %(uuid))),
+                'SECOND_END_FASTQ=%s' %(os.path.join(inpdir, '%s_2.fastq.gz' %(uuid)))]
         cmd = cmd + inp
-
+        
+        start_time = time.time()
         exitcode = runBashCmd._do_run(cmd)
+        
+        end_time = time.time()
 
         if exitcode != 0:
             msg = 'Conversion failed for: %s' %(bam_file)
             logger.error(msg)
+        logger.info('PICARD_TIME:\t%s\t%s\t%s' %(bamfile, os.path.getsize(bamfile),
+                                        float(end_time) - float(start_time)))
     else:
         logger.error('Invalid path %s or %s' %(inpdir, picard_path))
 
@@ -55,7 +61,7 @@ def GATK_snp_calling(reference, bamfile, outdir, program, GATK_path, logger=defa
         os.path.isdir(outdir)):
 
         start_time = time.time()
-        cmd = ['java','-Xmx7G', '-jar', '%s'%(os.path.join(GATK_path,'GenomeAnalysisTK.jar')), '-nct', '%s'%(int(0.8 * multiprocessing.cpu_count()))]
+        cmd = ['java','-Xmx7G', '-jar', '%s'%(os.path.join(GATK_path,'GenomeAnalysisTK.jar')), '-nt', '%s'%(int(0.8 * multiprocessing.cpu_count()))]
         inp = ['-R', reference, '-T', program, '-I', bamfile]
         out = ['-o', '%s' %(os.path.join(outdir, 'out_snps_%s' %(program)))]
 
@@ -73,6 +79,35 @@ def GATK_snp_calling(reference, bamfile, outdir, program, GATK_path, logger=defa
 
     else:
         logger.error('Invalid reference, bam or output directory')
+
+def align_bwa(dirname, uuid, reference, bwa_path, bamfile, logger=default_logger):
+    """ Run bwa mem for alignment """
+
+    if(os.path.isfile(reference) and os.path.isdir(dirname)):
+        reads_1 = os.path.join(dirname, "%s_1.fastq.gz" %(uuid))
+        reads_2 = os.path.join(dirname, "%s_2.fastq.gz" %(uuid))
+        if(os.path.isfile(reads_1) and os.path.isfile(reads_2)):
+            cmd = ['bwa', 'mem', '-t', '%s' %(int(0.8 * multiprocessing.cpu_count()))]
+            inp = [reference, reads_1, reads_2]
+            out = open(os.path.join(dirname, "bwa_%s.sam" %(uuid)), "w")
+
+            cmd = cmd + inp
+
+            start_time = time.time()
+            exitcode = runBashCmd._do_run(cmd, output_file=out)
+            end_time = time.time()
+
+            out.close()
+            if exitcode != 0:
+                msg = '%s returned unexpected non-zero exitcode %d' %(cmd,
+                                                                    exitcode)
+                logger.error(msg)
+            logger.info('BWA_TIME:\t%s\t%s\t%s' %(bamfile, os.path.getsize(bamfile),
+                                        float(end_time) - float(start_time)))
+        else:
+            logger.info("Fastq files for UUID: %s not available" %(uuid))
+    else:
+        logger.error("Invalid reference %s or directory %s" %(reference, directory))
 
 def getBAM(dirname, logger=default_logger):
     """ Function to get the path of a BAM file """
@@ -96,6 +131,8 @@ if __name__ == "__main__":
     parser.add_argument('--GATK', default='/usr/bin/lib/GATK/',
                         help='path/to/GATK/jar/files')
     parser.add_argument('--filename', help='path to metadata from cghub browser')
+    parser.add_argument('--picard', default='/usr/bin/lib/picard', help='path to picard binaries')
+    parser.add_argument('--bwa_path', default='/usr/bin/lib/bwa', help='path to bwa binaries')
     args = parser.parse_args()
 
     logger = setupLog.setup_logging(logging.INFO, 'benchmark', args.log_file)
@@ -110,8 +147,10 @@ if __name__ == "__main__":
         dirname = os.path.join(args.data, uuid)
         if(os.path.isdir(dirname)):
             bamfile = getBAM(dirname)
-            GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
-                            args.GATK)
+            convert_to_fastq(dirname, bamfile, uuid, args.picard)
+            #align_bwa(dirname, uuid, args.ref, args.bwa_path, bamfile)
+            #GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
+            #                args.GATK)
             #GATK_snp_calling(args.ref, bamfile, dirname, "HaplotypeCaller",
             #                args.GATK)
 
