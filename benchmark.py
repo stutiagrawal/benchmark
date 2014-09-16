@@ -156,14 +156,13 @@ if __name__ == "__main__":
         if(os.path.isdir(dirname)):
             bamfile = getBAM(os.path.join(dirname, uuid))
             if(os.path.isfile(bamfile)):
-                if(os.path.isfile('%s_1.fastq.gz' %(os.path.join(dirname, uuid, uuid))) 
-                   and os.path.isfile('%s_2.fastq.gz' %(os.path.join(dirname, uuid, uuid)))):
+                if(os.path.isfile('%s_1.fastq.gz' %(os.path.join(dirname, uuid))) 
+                   and os.path.isfile('%s_2.fastq.gz' %(os.path.join(dirname, uuid)))):
                     has_fastq_files = True
                 if(has_fastq_files):
                     align_bwa(dirname, uuid, args.ref, args.bwa_path, bamfile)
                 else:
                     convert_to_fastq(dirname, bamfile, uuid, args.picard)
-
             #GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
             #                args.GATK)
             #GATK_snp_calling(args.ref, bamfile, dirname, "HaplotypeCaller",
