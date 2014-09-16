@@ -20,10 +20,12 @@ def is_valid_input(cghub_key, outdir, logger=default_logger):
     return True
 
 #Download the data
-def download_bam(uuid, outdir, cghub_key, logger=default_logger):
+def download_bam(gt_path, uuid, outdir, cghub_key, logger=default_logger):
 
     if(is_valid_input(cghub_key, outdir)):
-        cmd = ['gtdownload', '-c', cghub_key, '-d', uuid, '-p', outdir]
+        print "Downloading %s" %(uuid)
+        cmd = ['%s' %(os.path.join(gt_path, './gtdownload')), '-c', cghub_key, '-d', uuid, '-p', outdir]
+        print cmd
         exitcode = runBashCmd._do_run(cmd)
 
         if exitcode != 0:
@@ -133,6 +135,8 @@ if __name__ == "__main__":
     parser.add_argument('--filename', help='path to metadata from cghub browser')
     parser.add_argument('--picard', default='/usr/bin/lib/picard', help='path to picard binaries')
     parser.add_argument('--bwa_path', default='/usr/bin/lib/bwa', help='path to bwa binaries')
+    parser.add_argument('--cghub_key', default='/usr/bin/keys/cghub.key', help='path to cghub key')    
+    parser.add_argument('--gt_path', default='/home/ubuntu/software/cghub/libexec')
     args = parser.parse_args()
 
     logger = setupLog.setup_logging(logging.INFO, 'benchmark', args.log_file)
@@ -145,10 +149,15 @@ if __name__ == "__main__":
         line = line.split("\t")
         uuid = line[16]
         dirname = os.path.join(args.data, uuid)
+        if not os.path.isdir(dirname):
+                os.makedirs(dirname)
+                download_bam(args.gt_path, uuid, dirname, args.cghub_key)
         if(os.path.isdir(dirname)):
-            bamfile = getBAM(dirname)
-            convert_to_fastq(dirname, bamfile, uuid, args.picard)
-            #align_bwa(dirname, uuid, args.ref, args.bwa_path, bamfile)
+            bamfile = getBAM(os.path.join(dirname, uuid))
+            if(os.path.isfile(bamfile)):
+                convert_to_fastq(dirname, bamfile, uuid, args.picard)
+                if(os.path.isfile('%s_1.fastq.gz' %(uuid)) and os.path.isfile('%s_2.fastq.gz' %(uuid))):
+                    align_bwa(dirname, uuid, args.ref, args.bwa_path, bamfile)
             #GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
             #                args.GATK)
             #GATK_snp_calling(args.ref, bamfile, dirname, "HaplotypeCaller",
