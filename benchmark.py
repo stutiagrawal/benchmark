@@ -36,7 +36,7 @@ def download_bam(gt_path, uuid, outdir, cghub_key, logger=default_logger):
 def convert_to_fastq(inpdir, bam_file, uuid, picard_path, logger=default_logger):
     
     if(os.path.isdir(inpdir) and os.path.isdir(picard_path)):
-        cmd = ['java','-Xmx1G', '-XX:-UseGCOverheadLimit', '-jar', '%s' %(os.path.join(picard_path,'SamToFastq.jar')),
+        cmd = ['java','-Xms2G','-Xmx12G', '-XX:-UseGCOverheadLimit', '-jar', '%s' %(os.path.join(picard_path,'SamToFastq.jar')),
                                         'VALIDATION_STRINGENCY=SILENT',
                                         'MAX_RECORDS_IN_RAM=null']
         inp = ['INPUT=%s' %(bam_file), 'FASTQ=%s' %(os.path.join(inpdir,'%s_1.fastq.gz' %(uuid))),
