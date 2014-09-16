@@ -155,7 +155,7 @@ if __name__ == "__main__":
                 download_bam(args.gt_path, uuid, dirname, args.cghub_key)
         if(os.path.isdir(dirname)):
             bamfile = getBAM(os.path.join(dirname, uuid))
-            if(os.path.isfile(bamfile)):
+            if(bamfile != None and os.path.isfile(bamfile)):
                 if(os.path.isfile('%s_1.fastq.gz' %(os.path.join(dirname, uuid))) 
                    and os.path.isfile('%s_2.fastq.gz' %(os.path.join(dirname, uuid)))):
                     has_fastq_files = True
