@@ -163,6 +163,7 @@ if __name__ == "__main__":
                     align_bwa(dirname, uuid, args.ref, args.bwa_path, bamfile)
                 else:
                     convert_to_fastq(dirname, bamfile, uuid, args.picard)
+                    align_bwa(dirname, uuid, args.ref, args.bwa_path, bamfile)
             #GATK_snp_calling(args.ref, bamfile, dirname, "UnifiedGenotyper",
             #                args.GATK)
             #GATK_snp_calling(args.ref, bamfile, dirname, "HaplotypeCaller",
